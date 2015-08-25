@@ -16,7 +16,23 @@ func exitOnError(err error) {
 	}
 }
 
-func renderFrame(g *gif.GIF, framenum int) error {
+type ColourMapFunc func(idx uint8) (termbox.Attribute, termbox.Attribute)
+
+func test(idx uint8) (termbox.Attribute, termbox.Attribute) {
+	return termbox.Attribute(idx), termbox.Attribute(idx)
+}
+
+func renderFrame(g *gif.GIF, framenum int, cmap ColourMapFunc) error {
+
+	width, height := termbox.Size()
+
+	for y := 0; y < height; y++ {
+		lineOffset := g.Image[framenum].Stride * y
+		for x := 0; x < width; x++ {
+			fg, bg := cmap(g.Image[framenum].Pix[x+lineOffset])
+			termbox.SetCell(x, y, ' ', fg, bg)
+		}
+	}
 
 	return nil
 }
@@ -48,8 +64,11 @@ func main() {
 	frameNumber := 0
 
 	gc.OnTick = func(gc *GameCore) error {
-		err := renderFrame(g, frameNumber)
+		err := renderFrame(g, frameNumber, test)
 		frameNumber++
+		if len(g.Image) == frameNumber {
+			frameNumber = 0
+		}
 		return err
 	}
 
