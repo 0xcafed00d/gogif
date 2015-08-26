@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	//"image"
 	"github.com/nsf/termbox-go"
+	"image/color"
 	"image/gif"
 	"os"
 	"time"
@@ -23,17 +23,27 @@ type AttribVals struct {
 
 type AttribTable [256]AttribVals
 
-type ColourMapFunc func(idx uint8) AttribVals
+type ColourMapFunc func(color.Color) AttribVals
 
-func test(idx uint8) AttribVals {
-	return AttribVals{fg: termbox.Attribute(idx), bg: termbox.Attribute(idx)}
+func test(c color.Color) AttribVals {
+	r, g, b, a := c.RGBA()
+
+	g = g
+	b = b
+	a = a
+
+	return AttribVals{fg: termbox.Attribute(r), bg: termbox.Attribute(r)}
 }
 
 func mapColours(g *gif.GIF, cmap ColourMapFunc) []AttribTable {
 	var attribs []AttribTable
 
 	for f := 0; f < len(g.Image); f++ {
-
+		var at AttribTable
+		for i := 0; i < len(g.Image[f].Palette); i++ {
+			at[i] = cmap(g.Image[f].Palette[i])
+		}
+		attribs = append(attribs, at)
 	}
 
 	return attribs
@@ -54,7 +64,7 @@ func renderFrame(g *gif.GIF, framenum int, attribs []AttribTable) error {
 	for y := 0; y < height; y++ {
 		lineOffset := g.Image[framenum].Stride * y
 		for x := 0; x < width; x++ {
-			attr := attribs[framenum][x+lineOffset]
+			attr := attribs[framenum][g.Image[framenum].Pix[x+lineOffset]]
 			termbox.SetCell(x, y, ' ', attr.fg, attr.bg)
 		}
 	}
