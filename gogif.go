@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"github.com/nsf/termbox-go"
 	"image/color"
@@ -26,13 +27,20 @@ type AttribTable [256]AttribVals
 type ColourMapFunc func(color.Color) AttribVals
 
 func test(c color.Color) AttribVals {
-	r, g, b, a := c.RGBA()
 
-	g = g
-	b = b
-	a = a
+	rgba := color.RGBAModel.Convert(c).(color.RGBA)
 
-	return AttribVals{fg: termbox.Attribute(r), bg: termbox.Attribute(r)}
+	return AttribVals{fg: termbox.Attribute(rgba.R), bg: termbox.Attribute(rgba.B)}
+}
+
+func CMapMono(c color.Color) AttribVals {
+
+	g := color.GrayModel.Convert(c).(color.Gray)
+
+	return AttribVals{
+		fg: termbox.Attribute(g.Y/11 + 1),
+		bg: termbox.Attribute(g.Y/11 + 1),
+	}
 }
 
 func mapColours(g *gif.GIF, cmap ColourMapFunc) []AttribTable {
@@ -85,7 +93,17 @@ func main() {
 	exitOnError(err)
 
 	gc := GameCore{}
-	gc.TickTime = time.Millisecond * 40
+	gc.TickTime = time.Millisecond * 50
+
+	gc.OnInit = func(gc *GameCore) error {
+		mode := termbox.SetOutputMode(termbox.OutputGrayscale)
+
+		if mode != termbox.OutputGrayscale {
+			return errors.New("termbox.OutputGrayscale")
+		}
+
+		return nil
+	}
 
 	gc.OnEvent = func(gc *GameCore, ev *termbox.Event) error {
 		if ev.Type == termbox.EventKey {
@@ -98,13 +116,14 @@ func main() {
 
 	frameNumber := 0
 
-	attribs := mapColours(g, test)
+	attribs := mapColours(g, CMapMono)
 
 	gc.OnTick = func(gc *GameCore) error {
 		err := renderFrame(g, frameNumber, attribs)
 		frameNumber++
 		if len(g.Image) == frameNumber {
 			frameNumber = 0
+			//gc.DoQuit = true
 		}
 		return err
 	}
