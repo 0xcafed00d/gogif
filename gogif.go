@@ -26,13 +26,6 @@ type AttribTable [256]AttribVals
 
 type ColourMapFunc func(color.Color) AttribVals
 
-func test(c color.Color) AttribVals {
-
-	rgba := color.RGBAModel.Convert(c).(color.RGBA)
-
-	return AttribVals{fg: termbox.Attribute(rgba.R), bg: termbox.Attribute(rgba.B)}
-}
-
 func CMapMono(c color.Color) AttribVals {
 
 	g := color.GrayModel.Convert(c).(color.Gray)
@@ -40,6 +33,20 @@ func CMapMono(c color.Color) AttribVals {
 	return AttribVals{
 		fg: termbox.Attribute(g.Y/11 + 1),
 		bg: termbox.Attribute(g.Y/11 + 1),
+	}
+}
+
+func CMapRGB(c color.Color) AttribVals {
+
+	rgb := color.RGBAModel.Convert(c).(color.RGBA)
+
+	r, g, b := int(rgb.R), int(rgb.G), int(rgb.B)
+
+	i := uint8((r*6/256)*36 + (g*6/256)*6 + (b * 6 / 256))
+
+	return AttribVals{
+		fg: termbox.Attribute(i + 17),
+		bg: termbox.Attribute(i + 17),
 	}
 }
 
@@ -96,10 +103,11 @@ func main() {
 	gc.TickTime = time.Millisecond * 50
 
 	gc.OnInit = func(gc *GameCore) error {
-		mode := termbox.SetOutputMode(termbox.OutputGrayscale)
+		//		mode := termbox.SetOutputMode(termbox.OutputGrayscale)
+		mode := termbox.SetOutputMode(termbox.Output256)
 
 		if mode != termbox.OutputGrayscale {
-			return errors.New("termbox.OutputGrayscale")
+			return errors.New("Failed to set output mode")
 		}
 
 		return nil
@@ -116,7 +124,8 @@ func main() {
 
 	frameNumber := 0
 
-	attribs := mapColours(g, CMapMono)
+	//	attribs := mapColours(g, CMapMono)
+	attribs := mapColours(g, CMapRGB)
 
 	gc.OnTick = func(gc *GameCore) error {
 		err := renderFrame(g, frameNumber, attribs)
