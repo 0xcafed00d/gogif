@@ -6,7 +6,10 @@ import (
 	"github.com/nsf/termbox-go"
 	"image/color"
 	"image/gif"
+	"io"
+	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -87,13 +90,26 @@ func renderFrame(g *gif.GIF, framenum int, attribs []AttribTable) error {
 	return nil
 }
 
+func openFile(name string) (io.ReadCloser, error) {
+	if strings.HasPrefix(name, "http://") || strings.HasPrefix(name, "https://") {
+		resp, err := http.Get(name)
+		if err != nil {
+			return nil, err
+		}
+
+		return resp.Body, nil
+	}
+
+	return os.Open(name)
+}
+
 func main() {
 	if len(os.Args) == 1 {
 		fmt.Fprintln(os.Stderr, "Usage: gogif <filename>")
 		os.Exit(1)
 	}
 
-	f, err := os.Open(os.Args[1])
+	f, err := openFile(os.Args[1])
 	exitOnError(err)
 
 	g, err := gif.DecodeAll(f)
