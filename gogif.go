@@ -21,8 +21,9 @@ func exitOnError(err error) {
 }
 
 type AttribVals struct {
-	fg termbox.Attribute
-	bg termbox.Attribute
+	fg    termbox.Attribute
+	bg    termbox.Attribute
+	trans bool
 }
 
 type AttribTable [256]AttribVals
@@ -48,8 +49,9 @@ func CMapRGB(c color.Color) AttribVals {
 	i := uint8((r*6/256)*36 + (g*6/256)*6 + (b * 6 / 256))
 
 	return AttribVals{
-		fg: termbox.Attribute(i + 17),
-		bg: termbox.Attribute(i + 17),
+		fg:    termbox.Attribute(i + 17),
+		bg:    termbox.Attribute(i + 17),
+		trans: (rgb.A == 0),
 	}
 }
 
@@ -82,8 +84,11 @@ func renderFrame(g *gif.GIF, framenum int, attribs []AttribTable) error {
 	for y := 0; y < height; y++ {
 		lineOffset := g.Image[framenum].Stride * y
 		for x := 0; x < width; x++ {
-			attr := attribs[framenum][g.Image[framenum].Pix[x+lineOffset]]
-			termbox.SetCell(x, y, ' ', attr.fg, attr.bg)
+			i := g.Image[framenum].Pix[x+lineOffset]
+			attr := attribs[framenum][i]
+			if !attr.trans {
+				termbox.SetCell(x, y, ' ', attr.fg, attr.bg)
+			}
 		}
 	}
 
@@ -114,6 +119,8 @@ func main() {
 
 	g, err := gif.DecodeAll(f)
 	exitOnError(err)
+
+	_ = "breakpoint"
 
 	gc := GameCore{}
 	gc.TickTime = time.Millisecond * 50
