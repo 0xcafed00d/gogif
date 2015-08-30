@@ -20,27 +20,27 @@ func exitOnError(err error) {
 	}
 }
 
-type AttribVals struct {
-	fg    termbox.Attribute
-	bg    termbox.Attribute
+type AttribInfo struct {
+	attr  termbox.Attribute
 	trans bool
 }
 
-type AttribTable [256]AttribVals
+type AttribTable [256]AttribInfo
 
-type ColourMapFunc func(color.Color) AttribVals
+type ColourMapFunc func(color.Color) AttribInfo
 
-func CMapMono(c color.Color) AttribVals {
+func CMapMono(c color.Color) AttribInfo {
 
 	g := color.GrayModel.Convert(c).(color.Gray)
+	rgb := color.RGBAModel.Convert(c).(color.RGBA)
 
-	return AttribVals{
-		fg: termbox.Attribute(g.Y/11 + 1),
-		bg: termbox.Attribute(g.Y/11 + 1),
+	return AttribInfo{
+		attr:  termbox.Attribute(g.Y/11 + 1),
+		trans: rgb.A == 0,
 	}
 }
 
-func CMapRGB(c color.Color) AttribVals {
+func CMapRGB(c color.Color) AttribInfo {
 
 	rgb := color.RGBAModel.Convert(c).(color.RGBA)
 
@@ -48,10 +48,9 @@ func CMapRGB(c color.Color) AttribVals {
 
 	i := uint8((r*6/256)*36 + (g*6/256)*6 + (b * 6 / 256))
 
-	return AttribVals{
-		fg:    termbox.Attribute(i + 17),
-		bg:    termbox.Attribute(i + 17),
-		trans: (rgb.A == 0),
+	return AttribInfo{
+		attr:  termbox.Attribute(i + 17),
+		trans: rgb.A == 0,
 	}
 }
 
@@ -69,17 +68,19 @@ func mapColours(g *gif.GIF, cmap ColourMapFunc) []AttribTable {
 	return attribs
 }
 
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 func renderFrame(g *gif.GIF, framenum int, attribs []AttribTable) error {
 
 	width, height := termbox.Size()
 
-	if width > g.Image[framenum].Rect.Dx() {
-		width = g.Image[framenum].Rect.Dx()
-	}
-
-	if height > g.Image[framenum].Rect.Dy() {
-		height = g.Image[framenum].Rect.Dy()
-	}
+	width = min(width, g.Image[framenum].Rect.Dx())
+	height = min(height, g.Image[framenum].Rect.Dy())
 
 	for y := 0; y < height; y++ {
 		lineOffset := g.Image[framenum].Stride * y
@@ -87,7 +88,7 @@ func renderFrame(g *gif.GIF, framenum int, attribs []AttribTable) error {
 			i := g.Image[framenum].Pix[x+lineOffset]
 			attr := attribs[framenum][i]
 			if !attr.trans {
-				termbox.SetCell(x, y, ' ', attr.fg, attr.bg)
+				termbox.SetCell(x, y, ' ', attr.attr, attr.attr)
 			}
 		}
 	}
