@@ -41,7 +41,6 @@ func CMapMono(c color.Color) AttribInfo {
 }
 
 func CMapRGB(c color.Color) AttribInfo {
-
 	rgb := color.RGBAModel.Convert(c).(color.RGBA)
 
 	r, g, b := int(rgb.R), int(rgb.G), int(rgb.B)
@@ -77,10 +76,10 @@ func min(a, b int) int {
 
 func renderFrame(g *gif.GIF, framenum int, attribs []AttribTable) error {
 
-	width, height := termbox.Size()
+	twidth, theight := termbox.Size()
 
-	width = min(width, g.Image[framenum].Rect.Dx())
-	height = min(height, g.Image[framenum].Rect.Dy())
+	width := min(twidth, g.Image[framenum].Rect.Dx())
+	height := min(theight, g.Image[framenum].Rect.Dy())
 
 	for y := 0; y < height; y++ {
 		lineOffset := g.Image[framenum].Stride * y
@@ -88,7 +87,36 @@ func renderFrame(g *gif.GIF, framenum int, attribs []AttribTable) error {
 			i := g.Image[framenum].Pix[x+lineOffset]
 			attr := attribs[framenum][i]
 			if !attr.trans {
-				termbox.SetCell(x, y, ' ', attr.attr, attr.attr)
+				cell := &termbox.CellBuffer()[x+y*twidth]
+				cell.Bg = attr.attr
+				cell.Fg = attr.attr
+			}
+		}
+	}
+
+	return nil
+}
+
+func renderFrameHiRes(g *gif.GIF, framenum int, attribs []AttribTable) error {
+
+	twidth, theight := termbox.Size()
+
+	width := min(twidth, g.Image[framenum].Rect.Dx())
+	height := min(theight, g.Image[framenum].Rect.Dy()*2)
+
+	for y := 0; y < height; y++ {
+		lineOffset := g.Image[framenum].Stride * y
+		for x := 0; x < width; x++ {
+			i := g.Image[framenum].Pix[x+lineOffset]
+			attr := attribs[framenum][i]
+			cell := &termbox.CellBuffer()[x+(y/2)*twidth]
+			cell.Ch = '▄'
+			if !attr.trans {
+				if y&1 == 0 {
+					cell.Bg = attr.attr
+				} else {
+					cell.Fg = attr.attr
+				}
 			}
 		}
 	}
@@ -127,7 +155,7 @@ func main() {
 	gc.TickTime = time.Millisecond * 50
 
 	gc.OnInit = func(gc *GameCore) error {
-		//		mode := termbox.SetOutputMode(termbox.OutputGrayscale)
+		//mode := termbox.SetOutputMode(termbox.OutputGrayscale)
 		mode := termbox.SetOutputMode(termbox.Output256)
 
 		if mode != termbox.OutputGrayscale {
@@ -148,11 +176,11 @@ func main() {
 
 	frameNumber := 0
 
-	//	attribs := mapColours(g, CMapMono)
+	//attribs := mapColours(g, CMapMono)
 	attribs := mapColours(g, CMapRGB)
 
 	gc.OnTick = func(gc *GameCore) error {
-		err := renderFrame(g, frameNumber, attribs)
+		err := renderFrameHiRes(g, frameNumber, attribs)
 		frameNumber++
 		if len(g.Image) == frameNumber {
 			frameNumber = 0
