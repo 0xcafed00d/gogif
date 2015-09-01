@@ -26,7 +26,7 @@ func (gc *GameCore) Run() error {
 	defer termbox.Close()
 
 	if gc.OnInit != nil {
-		gc.OnInit(gc)
+		err = gc.OnInit(gc)
 		if err != nil {
 			return err
 		}
@@ -41,11 +41,11 @@ func (gc *GameCore) Run() error {
 
 	gc.Ticker = time.NewTicker(gc.TickTime)
 
-	for !gc.DoQuit {
+	for !gc.DoQuit && err != nil {
 		select {
 		case ev := <-eventQueue:
 			if gc.OnEvent != nil {
-				gc.OnEvent(gc, &ev)
+				err = gc.OnEvent(gc, &ev)
 			}
 			if ev.Type == termbox.EventResize {
 				termbox.Flush()
@@ -53,10 +53,10 @@ func (gc *GameCore) Run() error {
 
 		case <-gc.Ticker.C:
 			if gc.OnTick != nil {
-				gc.OnTick(gc)
+				err = gc.OnTick(gc)
 				termbox.Flush()
 			}
 		}
 	}
-	return nil
+	return err
 }
