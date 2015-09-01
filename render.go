@@ -20,8 +20,10 @@ func CMapMono(c color.Color) AttribInfo {
 	g := color.GrayModel.Convert(c).(color.Gray)
 	rgb := color.RGBAModel.Convert(c).(color.RGBA)
 
+	i := uint8(int(g.Y) * 24 / 256)
+
 	return AttribInfo{
-		attr:  termbox.Attribute(g.Y/11 + 1),
+		attr:  termbox.Attribute(i + 233),
 		trans: rgb.A == 0,
 	}
 }

@@ -25,6 +25,11 @@ func init() {
 	flag.BoolVar(&config.Help, "h", false, "Display Help")
 	flag.BoolVar(&config.Mono, "m", false, "Play in Monochrome mode")
 	flag.BoolVar(&config.Once, "o", false, "Play animation once")
+
+	flag.Usage = func() {
+		fmt.Fprintln(os.Stderr, "Usage: gogif [options] <filename>")
+		flag.PrintDefaults()
+	}
 }
 
 func openFile(name string) (io.ReadCloser, error) {
@@ -40,18 +45,51 @@ func openFile(name string) (io.ReadCloser, error) {
 	return os.Open(name)
 }
 
-func showHelp() {
-	fmt.Fprintln(os.Stderr, "Usage: gogif [options] <filename>")
-	flag.PrintDefaults()
+type GogifState struct {
+	FrameNumber int
+	Gif         *gif.GIF
+	Attribs     []AttribTable
+}
+
+func (s *GogifState) OnInit(gc *GameCore) error {
+	mode := termbox.SetOutputMode(termbox.Output256)
+
+	if mode != termbox.Output256 {
+		return errors.New("Failed to set output mode")
+	}
+
+	cmap := CMapRGB
+	if config.Mono {
+		cmap = CMapMono
+	}
+	s.Attribs = mapColours(s.Gif, cmap)
+
+	return nil
+}
+
+func (s *GogifState) OnEvent(gc *GameCore, ev *termbox.Event) error {
+	if ev.Type == termbox.EventKey {
+		if ev.Ch == 'q' {
+			gc.DoQuit = true
+		}
+	}
+	return nil
+}
+
+func (s *GogifState) OnTick(gc *GameCore) error {
+	err := renderFrameHiRes(s.Gif, s.FrameNumber, s.Attribs)
+	s.FrameNumber++
+	if len(s.Gif.Image) == s.FrameNumber {
+		s.FrameNumber = 0
+	}
+	return err
 }
 
 func main() {
-
-	flag.Usage = showHelp
 	flag.Parse()
 
 	if len(flag.Args()) == 0 || config.Help {
-		showHelp()
+		flag.Usage()
 		os.Exit(1)
 	}
 
@@ -61,42 +99,13 @@ func main() {
 	g, err := gif.DecodeAll(f)
 	exitOnError(err)
 
-	gc := GameCore{}
-	gc.TickTime = time.Millisecond * 50
+	state := GogifState{Gif: g}
 
-	gc.OnInit = func(gc *GameCore) error {
-		//mode := termbox.SetOutputMode(termbox.OutputGrayscale)
-		mode := termbox.SetOutputMode(termbox.Output256)
-
-		if mode != termbox.OutputGrayscale {
-			return errors.New("Failed to set output mode")
-		}
-
-		return nil
-	}
-
-	gc.OnEvent = func(gc *GameCore, ev *termbox.Event) error {
-		if ev.Type == termbox.EventKey {
-			if ev.Ch == 'q' {
-				gc.DoQuit = true
-			}
-		}
-		return nil
-	}
-
-	frameNumber := 0
-
-	//attribs := mapColours(g, CMapMono)
-	attribs := mapColours(g, CMapRGB)
-
-	gc.OnTick = func(gc *GameCore) error {
-		err := renderFrameHiRes(g, frameNumber, attribs)
-		frameNumber++
-		if len(g.Image) == frameNumber {
-			frameNumber = 0
-			//gc.DoQuit = true
-		}
-		return err
+	gc := GameCore{
+		TickTime: time.Millisecond * 50,
+		OnInit:   state.OnInit,
+		OnEvent:  state.OnEvent,
+		OnTick:   state.OnTick,
 	}
 
 	gc.Run()
