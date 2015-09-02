@@ -13,13 +13,13 @@ import (
 	"time"
 )
 
-type Config struct {
+type Flags struct {
 	Mono bool
 	Once bool
 	Help bool
 }
 
-var config Config
+var config Flags
 
 func init() {
 	flag.BoolVar(&config.Help, "h", false, "Display Help")
@@ -45,13 +45,14 @@ func openFile(name string) (io.ReadCloser, error) {
 	return os.Open(name)
 }
 
-type GogifState struct {
+type State struct {
 	FrameNumber int
+	Config      Flags
 	Gif         *gif.GIF
 	Attribs     []AttribTable
 }
 
-func (s *GogifState) OnInit(gc *GameCore) error {
+func (s *State) OnInit(gc *GameCore) error {
 	mode := termbox.SetOutputMode(termbox.Output256)
 
 	if mode != termbox.Output256 {
@@ -59,7 +60,7 @@ func (s *GogifState) OnInit(gc *GameCore) error {
 	}
 
 	cmap := CMapRGB
-	if config.Mono {
+	if s.Config.Mono {
 		cmap = CMapMono
 	}
 	s.Attribs = mapColours(s.Gif, cmap)
@@ -67,7 +68,7 @@ func (s *GogifState) OnInit(gc *GameCore) error {
 	return nil
 }
 
-func (s *GogifState) OnEvent(gc *GameCore, ev *termbox.Event) error {
+func (s *State) OnEvent(gc *GameCore, ev *termbox.Event) error {
 	if ev.Type == termbox.EventKey {
 		if ev.Ch == 'q' {
 			gc.DoQuit = true
@@ -76,7 +77,7 @@ func (s *GogifState) OnEvent(gc *GameCore, ev *termbox.Event) error {
 	return nil
 }
 
-func (s *GogifState) OnTick(gc *GameCore) error {
+func (s *State) OnTick(gc *GameCore) error {
 	err := renderFrameHiRes(s.Gif, s.FrameNumber, s.Attribs)
 	s.FrameNumber++
 	if len(s.Gif.Image) == s.FrameNumber {
@@ -99,7 +100,10 @@ func main() {
 	g, err := gif.DecodeAll(f)
 	exitOnError(err)
 
-	state := GogifState{Gif: g}
+	state := State{
+		Gif:    g,
+		Config: config,
+	}
 
 	gc := GameCore{
 		TickTime: time.Millisecond * 50,
