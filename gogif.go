@@ -32,19 +32,6 @@ func init() {
 	}
 }
 
-func openFile(name string) (io.ReadCloser, error) {
-	if strings.HasPrefix(name, "http://") || strings.HasPrefix(name, "https://") {
-		resp, err := http.Get(name)
-		if err != nil {
-			return nil, err
-		}
-
-		return resp.Body, nil
-	}
-
-	return os.Open(name)
-}
-
 type State struct {
 	FrameNumber int
 	Config      Flags
@@ -86,6 +73,19 @@ func (s *State) OnTick(gc *GameCore) error {
 	return err
 }
 
+func openFile(name string) (io.ReadCloser, error) {
+	if strings.HasPrefix(name, "http://") || strings.HasPrefix(name, "https://") {
+		resp, err := http.Get(name)
+		if err != nil {
+			return nil, err
+		}
+
+		return resp.Body, nil
+	}
+
+	return os.Open(name)
+}
+
 func main() {
 	flag.Parse()
 
@@ -112,5 +112,6 @@ func main() {
 		OnTick:   state.OnTick,
 	}
 
-	gc.Run()
+	err = gc.Run()
+	exitOnError(err)
 }

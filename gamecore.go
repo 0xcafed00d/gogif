@@ -41,7 +41,7 @@ func (gc *GameCore) Run() error {
 
 	gc.Ticker = time.NewTicker(gc.TickTime)
 
-	for !gc.DoQuit && err != nil {
+	for !gc.DoQuit && err == nil {
 		select {
 		case ev := <-eventQueue:
 			if gc.OnEvent != nil {

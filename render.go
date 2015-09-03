@@ -83,9 +83,12 @@ func renderFrameHiRes(g *gif.GIF, framenum int, attribs []AttribTable) error {
 	twidth, theight := termbox.Size()
 
 	width := min(twidth, g.Image[framenum].Rect.Dx())
-	height := min(theight, g.Image[framenum].Rect.Dy()*2)
 
-	for y := 0; y < height; y++ {
+	for y := 0; y < g.Image[framenum].Rect.Dy(); y++ {
+		if y/2 == theight {
+			return nil
+		}
+
 		lineOffset := g.Image[framenum].Stride * y
 		for x := 0; x < width; x++ {
 			i := g.Image[framenum].Pix[x+lineOffset]
