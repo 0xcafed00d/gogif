@@ -1,3 +1,3 @@
-# gogif  [![Build Status](https://travis-ci.org/SimulatedSimian/gogif.svg)](https://travis-ci.org/SimulatedSimian/gogif)
+# gogif  [![Build Status](https://travis-ci.org/simulatedsimian/gogif.svg)](https://travis-ci.org/simulatedsimian/gogif)
 
 gogif
